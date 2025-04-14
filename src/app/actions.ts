@@ -4,11 +4,12 @@ import { encodedRedirect } from "@/utils/utils";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "../../supabase/server";
+import { revalidatePath } from "next/cache";
 
 export const signUpAction = async (formData: FormData) => {
   const email = formData.get("email")?.toString();
   const password = formData.get("password")?.toString();
-  const fullName = formData.get("full_name")?.toString() || '';
+  const fullName = formData.get("full_name")?.toString() || "";
   const supabase = await createClient();
   const origin = headers().get("origin");
 
@@ -20,7 +21,10 @@ export const signUpAction = async (formData: FormData) => {
     );
   }
 
-  const { data: { user }, error } = await supabase.auth.signUp({
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -28,12 +32,11 @@ export const signUpAction = async (formData: FormData) => {
       data: {
         full_name: fullName,
         email: email,
-      }
+      },
     },
   });
 
   console.log("After signUp", error);
-
 
   if (error) {
     console.error(error.code + " " + error.message);
@@ -42,23 +45,21 @@ export const signUpAction = async (formData: FormData) => {
 
   if (user) {
     try {
-      const { error: updateError } = await supabase
-        .from('users')
-        .insert({
-          id: user.id,
-          name: fullName,
-          full_name: fullName,
-          email: email,
-          user_id: user.id,
-          token_identifier: user.id,
-          created_at: new Date().toISOString()
-        });
+      const { error: updateError } = await supabase.from("users").insert({
+        id: user.id,
+        name: fullName,
+        full_name: fullName,
+        email: email,
+        user_id: user.id,
+        token_identifier: user.id,
+        created_at: new Date().toISOString(),
+      });
 
       if (updateError) {
-        console.error('Error updating user profile:', updateError);
+        console.error("Error updating user profile:", updateError);
       }
     } catch (err) {
-      console.error('Error in user profile creation:', err);
+      console.error("Error in user profile creation:", err);
     }
   }
 
@@ -162,3 +163,60 @@ export const signOutAction = async () => {
   await supabase.auth.signOut();
   return redirect("/sign-in");
 };
+
+export async function createBioLink(formData: FormData) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  const title = formData.get("title") as string;
+  const username = formData.get("username") as string;
+  const bio = formData.get("bio") as string;
+  const template = formData.get("template") as string;
+
+  if (!title || !username) {
+    return { error: "Title and username are required" };
+  }
+
+  // Check if username is already taken
+  const { data: existingBioLink } = await supabase
+    .from("bio_links")
+    .select("id")
+    .eq("username", username)
+    .single();
+
+  if (existingBioLink) {
+    return { error: "Username is already taken" };
+  }
+
+  // Create new bio link
+  const { data: bioLink, error } = await supabase
+    .from("bio_links")
+    .insert([
+      {
+        title,
+        username,
+        bio,
+        template,
+        user_id: user.id,
+        views: 0,
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/dashboard/links");
+  revalidatePath("/dashboard");
+
+  return { success: true, bioLink };
+}

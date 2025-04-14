@@ -1,4 +1,6 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { redirect, useRouter } from "next/navigation";
 import { createClient } from "../../../../supabase/server";
 import DashboardNavbar from "@/components/dashboard-navbar";
 import { Button } from "@/components/ui/button";
@@ -14,17 +16,74 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Briefcase, Music, Dumbbell } from "lucide-react";
+import { createBioLink } from "@/app/actions";
+import { useState } from "react";
+import { useToast } from "@/components/ui/use-toast";
 
-export default async function CreateBioLink() {
-  const supabase = await createClient();
+export default function CreateBioLink() {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    title: "",
+    username: "",
+    bio: "",
+    template: "minimal",
+  });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [id]: value,
+    }));
+  };
 
-  if (!user) {
-    return redirect("/sign-in");
-  }
+  const handleTemplateSelect = (template: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      template,
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const formDataObj = new FormData();
+      formDataObj.append("title", formData.title);
+      formDataObj.append("username", formData.username);
+      formDataObj.append("bio", formData.bio);
+      formDataObj.append("template", formData.template);
+
+      const result = await createBioLink(formDataObj);
+
+      if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Bio link created successfully!",
+        });
+        router.push("/dashboard/links");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <>
@@ -47,10 +106,16 @@ export default async function CreateBioLink() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form className="space-y-6">
+                <form className="space-y-6" onSubmit={handleSubmit}>
                   <div className="space-y-2">
                     <Label htmlFor="title">Page Title</Label>
-                    <Input id="title" placeholder="My Bio Link" />
+                    <Input
+                      id="title"
+                      placeholder="My Bio Link"
+                      value={formData.title}
+                      onChange={handleChange}
+                      required
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -63,6 +128,9 @@ export default async function CreateBioLink() {
                         id="username"
                         className="rounded-l-none"
                         placeholder="yourname"
+                        value={formData.username}
+                        onChange={handleChange}
+                        required
                       />
                     </div>
                   </div>
@@ -73,8 +141,17 @@ export default async function CreateBioLink() {
                       id="bio"
                       className="w-full min-h-24 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       placeholder="Tell visitors about yourself..."
+                      value={formData.bio}
+                      onChange={handleChange}
                     />
                   </div>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? "Creating..." : "Create Bio Link"}
+                  </Button>
                 </form>
               </CardContent>
             </Card>
@@ -87,7 +164,19 @@ export default async function CreateBioLink() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Tabs defaultValue="generic">
+                <Tabs
+                  defaultValue="generic"
+                  onValueChange={(value) => {
+                    // When tab changes, we'll update the template based on the first option in that category
+                    const templateMap: Record<string, string> = {
+                      generic: "minimal",
+                      freelancer: "portfolio",
+                      fitness: "trainer",
+                      musician: "artist",
+                    };
+                    handleTemplateSelect(templateMap[value]);
+                  }}
+                >
                   <TabsList className="grid grid-cols-4 mb-6">
                     <TabsTrigger value="generic">Generic</TabsTrigger>
                     <TabsTrigger value="freelancer">Freelancer</TabsTrigger>
@@ -97,7 +186,10 @@ export default async function CreateBioLink() {
 
                   <TabsContent value="generic" className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="border rounded-lg p-4 hover:border-primary cursor-pointer transition-all">
+                      <div
+                        className={`border rounded-lg p-4 hover:border-primary cursor-pointer transition-all ${formData.template === "minimal" ? "border-primary bg-primary/5" : ""}`}
+                        onClick={() => handleTemplateSelect("minimal")}
+                      >
                         <div className="aspect-[9/16] bg-gray-100 rounded-md mb-3 flex items-center justify-center">
                           <span className="text-sm text-muted-foreground">
                             Minimal
@@ -105,7 +197,10 @@ export default async function CreateBioLink() {
                         </div>
                         <p className="text-sm font-medium">Minimal</p>
                       </div>
-                      <div className="border rounded-lg p-4 hover:border-primary cursor-pointer transition-all">
+                      <div
+                        className={`border rounded-lg p-4 hover:border-primary cursor-pointer transition-all ${formData.template === "modern" ? "border-primary bg-primary/5" : ""}`}
+                        onClick={() => handleTemplateSelect("modern")}
+                      >
                         <div className="aspect-[9/16] bg-gray-100 rounded-md mb-3 flex items-center justify-center">
                           <span className="text-sm text-muted-foreground">
                             Modern
@@ -118,13 +213,19 @@ export default async function CreateBioLink() {
 
                   <TabsContent value="freelancer" className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="border rounded-lg p-4 hover:border-primary cursor-pointer transition-all">
+                      <div
+                        className={`border rounded-lg p-4 hover:border-primary cursor-pointer transition-all ${formData.template === "portfolio" ? "border-primary bg-primary/5" : ""}`}
+                        onClick={() => handleTemplateSelect("portfolio")}
+                      >
                         <div className="aspect-[9/16] bg-gray-100 rounded-md mb-3 flex items-center justify-center">
                           <Briefcase className="h-8 w-8 text-muted-foreground" />
                         </div>
                         <p className="text-sm font-medium">Portfolio</p>
                       </div>
-                      <div className="border rounded-lg p-4 hover:border-primary cursor-pointer transition-all">
+                      <div
+                        className={`border rounded-lg p-4 hover:border-primary cursor-pointer transition-all ${formData.template === "services" ? "border-primary bg-primary/5" : ""}`}
+                        onClick={() => handleTemplateSelect("services")}
+                      >
                         <div className="aspect-[9/16] bg-gray-100 rounded-md mb-3 flex items-center justify-center">
                           <Briefcase className="h-8 w-8 text-muted-foreground" />
                         </div>
@@ -135,13 +236,19 @@ export default async function CreateBioLink() {
 
                   <TabsContent value="fitness" className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="border rounded-lg p-4 hover:border-primary cursor-pointer transition-all">
+                      <div
+                        className={`border rounded-lg p-4 hover:border-primary cursor-pointer transition-all ${formData.template === "trainer" ? "border-primary bg-primary/5" : ""}`}
+                        onClick={() => handleTemplateSelect("trainer")}
+                      >
                         <div className="aspect-[9/16] bg-gray-100 rounded-md mb-3 flex items-center justify-center">
                           <Dumbbell className="h-8 w-8 text-muted-foreground" />
                         </div>
                         <p className="text-sm font-medium">Trainer</p>
                       </div>
-                      <div className="border rounded-lg p-4 hover:border-primary cursor-pointer transition-all">
+                      <div
+                        className={`border rounded-lg p-4 hover:border-primary cursor-pointer transition-all ${formData.template === "nutrition" ? "border-primary bg-primary/5" : ""}`}
+                        onClick={() => handleTemplateSelect("nutrition")}
+                      >
                         <div className="aspect-[9/16] bg-gray-100 rounded-md mb-3 flex items-center justify-center">
                           <Dumbbell className="h-8 w-8 text-muted-foreground" />
                         </div>
@@ -152,13 +259,19 @@ export default async function CreateBioLink() {
 
                   <TabsContent value="musician" className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="border rounded-lg p-4 hover:border-primary cursor-pointer transition-all">
+                      <div
+                        className={`border rounded-lg p-4 hover:border-primary cursor-pointer transition-all ${formData.template === "artist" ? "border-primary bg-primary/5" : ""}`}
+                        onClick={() => handleTemplateSelect("artist")}
+                      >
                         <div className="aspect-[9/16] bg-gray-100 rounded-md mb-3 flex items-center justify-center">
                           <Music className="h-8 w-8 text-muted-foreground" />
                         </div>
                         <p className="text-sm font-medium">Artist</p>
                       </div>
-                      <div className="border rounded-lg p-4 hover:border-primary cursor-pointer transition-all">
+                      <div
+                        className={`border rounded-lg p-4 hover:border-primary cursor-pointer transition-all ${formData.template === "band" ? "border-primary bg-primary/5" : ""}`}
+                        onClick={() => handleTemplateSelect("band")}
+                      >
                         <div className="aspect-[9/16] bg-gray-100 rounded-md mb-3 flex items-center justify-center">
                           <Music className="h-8 w-8 text-muted-foreground" />
                         </div>
@@ -183,9 +296,11 @@ export default async function CreateBioLink() {
                 <div className="border rounded-lg p-2">
                   <div className="aspect-[9/16] bg-gray-100 rounded-md flex flex-col items-center justify-start p-4">
                     <div className="w-16 h-16 rounded-full bg-gray-200 mb-3"></div>
-                    <p className="font-medium">Your Name</p>
+                    <p className="font-medium">
+                      {formData.title || "Your Name"}
+                    </p>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Your bio goes here...
+                      {formData.bio || "Your bio goes here..."}
                     </p>
 
                     <div className="w-full space-y-2">
@@ -197,7 +312,11 @@ export default async function CreateBioLink() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button className="w-full">Create Bio Link</Button>
+                <p className="text-xs text-muted-foreground w-full text-center">
+                  {formData.username
+                    ? `linkgenius.com/${formData.username}`
+                    : "Your unique URL will appear here"}
+                </p>
               </CardFooter>
             </Card>
           </div>

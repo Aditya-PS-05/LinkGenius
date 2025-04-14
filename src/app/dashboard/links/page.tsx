@@ -24,25 +24,53 @@ export default async function LinksPage() {
     return redirect("/sign-in");
   }
 
-  // Placeholder data for demo purposes
-  const links = [
-    {
-      id: "1",
-      title: "My Portfolio",
-      username: "portfolio",
-      views: 245,
-      clicks: 87,
-      createdAt: "2023-05-15",
-    },
-    {
-      id: "2",
-      title: "Music Links",
-      username: "music",
-      views: 128,
-      clicks: 42,
-      createdAt: "2023-06-22",
-    },
-  ];
+  // Fetch user's bio links from the database
+  const { data: links, error } = await supabase
+    .from("bio_links")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching bio links:", error);
+    return (
+      <>
+        <DashboardNavbar />
+        <main className="container mx-auto px-4 py-8">
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Your Bio Links</h1>
+              <p className="text-muted-foreground">
+                Manage all your bio links in one place
+              </p>
+            </div>
+            <Link href="/dashboard/create">
+              <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Create New Link
+              </Button>
+            </Link>
+          </div>
+          <Card className="text-center py-12">
+            <CardContent>
+              <div className="flex flex-col items-center justify-center space-y-4">
+                <h3 className="text-xl font-semibold text-destructive">
+                  Error loading bio links
+                </h3>
+                <p className="text-muted-foreground max-w-md">
+                  There was an error loading your bio links. Please try again
+                  later.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+      </>
+    );
+  }
+
+  // Use empty array if links is null
+  const bioLinks = links || [];
 
   return (
     <>
@@ -63,7 +91,7 @@ export default async function LinksPage() {
           </Link>
         </div>
 
-        {links.length === 0 ? (
+        {bioLinks.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent>
               <div className="flex flex-col items-center justify-center space-y-4">
@@ -86,7 +114,7 @@ export default async function LinksPage() {
           </Card>
         ) : (
           <div className="grid gap-6">
-            {links.map((link) => (
+            {bioLinks.map((link) => (
               <Card key={link.id}>
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -100,7 +128,7 @@ export default async function LinksPage() {
                     <div className="flex flex-wrap gap-4 md:gap-8">
                       <div className="flex flex-col items-center">
                         <span className="text-lg font-semibold">
-                          {link.views}
+                          {link.views || 0}
                         </span>
                         <span className="text-xs text-muted-foreground">
                           Views
@@ -109,7 +137,7 @@ export default async function LinksPage() {
 
                       <div className="flex flex-col items-center">
                         <span className="text-lg font-semibold">
-                          {link.clicks}
+                          {link.clicks || 0}
                         </span>
                         <span className="text-xs text-muted-foreground">
                           Clicks
@@ -118,7 +146,7 @@ export default async function LinksPage() {
 
                       <div className="flex flex-col items-center">
                         <span className="text-lg font-semibold">
-                          {link.clicks > 0
+                          {link.views && link.clicks && link.clicks > 0
                             ? Math.round((link.clicks / link.views) * 100)
                             : 0}
                           %
