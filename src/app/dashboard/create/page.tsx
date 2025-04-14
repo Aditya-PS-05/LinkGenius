@@ -1,11 +1,8 @@
 "use client";
 
-import { redirect, useRouter } from "next/navigation";
-import { createClient } from "../../../../supabase/server";
+import { useRouter } from "next/navigation";
 import DashboardNavbar from "@/components/dashboard-navbar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
@@ -16,9 +13,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Briefcase, Music, Dumbbell } from "lucide-react";
-import { createBioLink } from "@/app/actions";
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
+import { FormInput } from "@/components/form-input";
+import { SelectInput } from "@/components/select-input";
 
 export default function CreateBioLink() {
   const router = useRouter();
@@ -27,8 +25,9 @@ export default function CreateBioLink() {
   const [formData, setFormData] = useState({
     title: "",
     username: "",
-    bio: "",
+    description: "",
     template: "minimal",
+    niche: "Freelancers",
   });
 
   const handleChange = (
@@ -56,8 +55,8 @@ export default function CreateBioLink() {
       const formDataObj = new FormData();
       formDataObj.append("title", formData.title);
       formDataObj.append("username", formData.username);
-      formDataObj.append("bio", formData.bio);
-      formDataObj.append("template", formData.template);
+      formDataObj.append("description", formData.description);
+      formDataObj.append("niche", formData.niche);
 
       const result = await createBioLink(formDataObj);
 
@@ -107,46 +106,40 @@ export default function CreateBioLink() {
               </CardHeader>
               <CardContent>
                 <form className="space-y-6" onSubmit={handleSubmit}>
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Page Title</Label>
-                    <Input
-                      id="title"
-                      placeholder="My Bio Link"
-                      value={formData.title}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
+                  <FormInput
+                    label="Page Title"
+                    id="title"
+                    placeholder="My Bio Link"
+                    value={formData.title}
+                    onChange={handleChange}
+                  />
 
-                  <div className="space-y-2">
-                    <Label htmlFor="username">Username</Label>
-                    <div className="flex items-center">
-                      <span className="bg-muted px-3 py-2 rounded-l-md border border-r-0 border-input text-muted-foreground">
-                        linkgenius.com/
-                      </span>
-                      <Input
-                        id="username"
-                        className="rounded-l-none"
-                        placeholder="yourname"
-                        value={formData.username}
-                        onChange={handleChange}
-                        required
-                      />
-                    </div>
-                  </div>
+                  <FormInput
+                    label="Username"
+                    id="username"
+                    placeholder="yourname"
+                    prefix="linkgenius.com/"
+                    value={formData.username}
+                    onChange={handleChange}
+                  />
 
-                  <div className="space-y-2">
-                    <Label htmlFor="bio">Bio</Label>
-                    <textarea
-                      id="bio"
-                      className="w-full min-h-24 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      placeholder="Tell visitors about yourself..."
-                      value={formData.bio}
-                      onChange={handleChange}
-                    />
-                  </div>
+                  <FormInput
+                    label="Description"
+                    id="description"
+                    placeholder="Tell visitors about yourself..."
+                    isTextArea
+                    value={formData.description}
+                    onChange={handleChange}
+                  />
+                  <SelectInput
+                    label="Niche"
+                    id="niche"
+                    options={["Freelancers", "Fitness trainers", "Indie hackers", "Language tutors", "Musicians"]}
+                    value={formData.niche}
+                    onChange={(value) => setFormData({ ...formData, niche: value })}
+                  />
                   <Button
-                    type="submit"
+                    type="submit"                    
                     className="w-full"
                     disabled={isSubmitting}
                   >
@@ -167,7 +160,7 @@ export default function CreateBioLink() {
                 <Tabs
                   defaultValue="generic"
                   onValueChange={(value) => {
-                    // When tab changes, we'll update the template based on the first option in that category
+                    // When tab changes, we'll update the template based on the first option in that category\n                    
                     const templateMap: Record<string, string> = {
                       generic: "minimal",
                       freelancer: "portfolio",
@@ -300,7 +293,7 @@ export default function CreateBioLink() {
                       {formData.title || "Your Name"}
                     </p>
                     <p className="text-sm text-muted-foreground mb-4">
-                      {formData.bio || "Your bio goes here..."}
+                      {formData.description || "Your bio goes here..."}
                     </p>
 
                     <div className="w-full space-y-2">
