@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { PlusCircle, ExternalLink, BarChart, Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { deleteBioLink } from "@/app/actions";
 
 export default async function LinksPage() {
   const supabase = await createClient();
@@ -158,25 +159,35 @@ export default async function LinksPage() {
                     </div>
 
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        <ExternalLink className="h-4 w-4 mr-1" />
-                        Visit
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <BarChart className="h-4 w-4 mr-1" />
-                        Analytics
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <Link href={`/${link.username}`} target="_blank">
+                        <Button variant="outline" size="sm">
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          Visit
+                        </Button>
+                      </Link>
+                      <Link href={`/dashboard/analytics?id=${link.id}`}>
+                        <Button variant="outline" size="sm">
+                          <BarChart className="h-4 w-4 mr-1" />
+                          Analytics
+                        </Button>
+                      </Link>
+                      <Link href={`/dashboard/edit/${link.id}`}>
+                        <Button variant="outline" size="sm">
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                      </Link>
+                      <form action={deleteBioLink}>
+                        <input type="hidden" name="id" value={link.id} />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          type="submit"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </form>
                     </div>
                   </div>
                 </CardContent>

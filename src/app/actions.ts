@@ -220,3 +220,47 @@ export async function createBioLink(formData: FormData) {
 
   return { success: true, bioLink };
 }
+
+export async function deleteBioLink(formData: FormData) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  const id = formData.get("id") as string;
+
+  if (!id) {
+    return { error: "Bio link ID is required" };
+  }
+
+  // Verify the bio link belongs to the user
+  const { data: bioLink } = await supabase
+    .from("bio_links")
+    .select("id")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!bioLink) {
+    return {
+      error: "Bio link not found or you don't have permission to delete it",
+    };
+  }
+
+  // Delete the bio link
+  const { error } = await supabase.from("bio_links").delete().eq("id", id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/dashboard/links");
+  revalidatePath("/dashboard");
+
+  return { success: true };
+}
